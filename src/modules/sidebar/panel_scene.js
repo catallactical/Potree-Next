@@ -1,10 +1,11 @@
 
-import {Gradients, Utils} from "potree";
+import {Gradients, Utils, Potree} from "potree";
 let dir = new URL(import.meta.url + "/../").href;
 
 class Panel{
 
-	constructor(){
+	constructor(potree){
+		this.potree = potree;
 		this.element = document.createElement("div");
 		this.elTable = document.createElement("div");
 
@@ -24,7 +25,7 @@ class Panel{
 
 	update(){
 
-		let scene = Potree.instance.scene;
+		let scene = (this.potree ?? Potree.instance).scene;
 
 		let tableString = "";
 
@@ -100,7 +101,7 @@ class Panel{
 
 				if(elZoom){
 					elZoom.onclick = () => {
-						potree.controls.zoomTo(node);
+						this.potree.controls.zoomTo(node);
 					};
 				}
 
@@ -113,8 +114,8 @@ class Panel{
 
 }
 
-export function createPanel(){
-	let panel = new Panel();
+export function createPanel(potree){
+	let panel = new Panel(potree);
 	panel.element.id = "scene_panel";
 	panel.element.classList.add("subsection_panel");
 

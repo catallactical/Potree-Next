@@ -82,7 +82,7 @@ function addSection(section){
 	sections.push(section);
 }
 
-function createMainSection(){
+function createMainSection(potree){
 
 	let elPanel = document.createElement("span");
 
@@ -95,7 +95,7 @@ function createMainSection(){
 	let panel_appearance = createAppearancePanel();
 	elPanel.append(panel_appearance.element);
 
-	let panel_scene = createScenePanel();
+	let panel_scene = createScenePanel(potree);
 	elPanel.append(panel_scene.element);
 
 	let panel_infos = createInfosPanel();
@@ -133,7 +133,7 @@ function createAttributesSection(){
 	return section;
 }
 
-function createMeasureSection(){
+function createMeasureSection(potree){
 
 	let elPanel = document.createElement("span");
 
@@ -143,7 +143,7 @@ function createMeasureSection(){
 		</div>
 	`;
 
-	let panel_measurements = createMeasurementsPanel();
+	let panel_measurements = createMeasurementsPanel(potree);
 	elPanel.append(panel_measurements.element);
 
 	let section = new Section();
@@ -198,7 +198,7 @@ export async function installSidebar(elPotree, potree){
 
 
 	let secMain = createMainSection(potree);
-	let secMeasure = createMeasureSection();
+	let secMeasure = createMeasureSection(potree);
 	let secAttributes = createAttributesSection();
 
 	addSection(secMain);

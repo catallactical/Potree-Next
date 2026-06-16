@@ -982,19 +982,17 @@ function dbgControls(){
 }
 window.dbgControls = dbgControls;
 
-export async function init(){
+export async function init(canvas){
 
 	renderer = new Renderer();
 	Potree.renderer = renderer;
 
-	await renderer.init();
+	await renderer.init(canvas);
 
 	let potree = {};
 
 	camera = new Camera();
 	controls = new OrbitControls(renderer.canvas);
-	// controls = new PotreeControls(renderer.canvas);
-	window.orbitControls = new OrbitControls(renderer.canvas);
 
 	potree.controls_list = [controls];
 	potree.camera = camera;
@@ -1030,27 +1028,18 @@ export async function init(){
 	inputHandler.addInputListener(measure.dispatcher);
 	inputHandler.addInputListener(dispatcher);
 
-
-	// make things available in dev tools for debugging
-	window.camera = camera;
-	window.controls = controls;
-	window.scene = scene;
-	window.renderer = renderer;
-
 	initScene();
 	Potree.scene = scene;
 
-	// progressive loader
-	let element = document.getElementById("canvas");
-	ProgressiveLoader.install(element, {
-		onSetup: (node) => {
-			scene.root.children.push(node)
-			console.log("setup done");
-		},
-		onProgress: (e) => {
-			console.log("progress", e);
-		}
-	});
+	// Install the progressive loader on the canvas element (drag-and-drop LAS)
+	// only when running outside the library context (canvas el present by ID).
+	let dropTarget = canvas ?? document.getElementById("canvas");
+	if(dropTarget){
+		ProgressiveLoader.install(dropTarget, {
+			onSetup: (node) => { scene.root.children.push(node); },
+			onProgress: () => {},
+		});
+	}
 
 	requestAnimationFrame(loop);
 

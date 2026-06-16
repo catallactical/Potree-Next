@@ -132,7 +132,7 @@ export class Renderer{
 		return msg;
 	}
 
-	async init(){
+	async init(canvas){
 		this.adapter = await navigator.gpu.requestAdapter({"powerPreference": "high-performance"});
 
 		this.timestamps.enabled = this.adapter.features.has("timestamp-query");
@@ -196,7 +196,7 @@ export class Renderer{
 			}
 		}
 
-		this.canvas = document.getElementById("canvas");
+		this.canvas = canvas ?? document.getElementById("canvas");
 		this.context = this.canvas.getContext("webgpu");
 
 		this.canvas.setAttribute("tabindex", 0);

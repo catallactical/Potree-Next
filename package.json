@@ -1,0 +1,15 @@
+{
+  "name": "potree-next",
+  "version": "0.2.0",
+  "description": "Potree Next — WebGPU point cloud renderer",
+  "type": "module",
+  "exports": {
+    ".": "./src/Potree.js",
+    "./sidebar": "./src/modules/sidebar/sidebar.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/catallactical/Potree-Next.git"
+  },
+  "license": "AGPL-3.0"
+}

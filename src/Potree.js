@@ -184,3 +184,7 @@ export let Potree = {
 };
 
 
+
+export {PotreeViewer} from "./viewer.js";
+export {installSidebar} from "./modules/sidebar/sidebar.js";
+export {PotreeLoader} from "./potree/octree/loader/PotreeLoader.js";

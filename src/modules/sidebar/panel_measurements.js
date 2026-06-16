@@ -5,7 +5,8 @@ let dir = new URL(import.meta.url + "/../").href;
 
 class Panel{
 
-	constructor(){
+	constructor(potree){
+		this.potree = potree;
 		this.element = document.createElement("div");
 		this.name = "Measurements";
 		this.prevHtml = "";
@@ -46,7 +47,7 @@ class Panel{
 			elButton.style.backgroundImage = `url(${dir}/icons/point.svg)`;
 
 			elButton.addEventListener("click", () => {
-				potree.measure.startMeasuring(new PointMeasure());
+				this.potree.measure.startMeasuring(new PointMeasure());
 			});
 
 			this.element.append(elButton);
@@ -60,7 +61,7 @@ class Panel{
 			elButton.style.backgroundImage = `url(${dir}/icons/distance.svg)`;
 
 			elButton.addEventListener("click", () => {
-				potree.measure.startMeasuring(new DistanceMeasure());
+				this.potree.measure.startMeasuring(new DistanceMeasure());
 			});
 
 			this.element.append(elButton);
@@ -74,7 +75,7 @@ class Panel{
 			elButton.style.backgroundImage = `url(${dir}/icons/height.svg)`;
 
 			elButton.addEventListener("click", () => {
-				potree.measure.startMeasuring(new HeightMeasure());
+				this.potree.measure.startMeasuring(new HeightMeasure());
 			});
 
 			this.element.append(elButton);
@@ -88,7 +89,7 @@ class Panel{
 			elButton.style.backgroundImage = `url(${dir}/icons/circle.svg)`;
 
 			elButton.addEventListener("click", () => {
-				potree.measure.startMeasuring({});
+				this.potree.measure.startMeasuring({});
 			});
 
 			this.element.append(elButton);
@@ -97,7 +98,7 @@ class Panel{
 
 	updateListOfMeasures(){
 
-		let measureTool = potree.measure;
+		let measureTool = this.potree.measure;
 
 		
 		
@@ -163,12 +164,9 @@ class Panel{
 
 
 
-export function createMeasurementsPanel(){
-	
+export function createMeasurementsPanel(potree){
 
-	// updateListOfMeasures(elMeasures);
-
-	let panel = new Panel();
+	let panel = new Panel(potree);
 
 	panel.updateListOfMeasures();
 
