@@ -527,21 +527,17 @@ function renderNotSoBasic(){
 
 	}else if(forwardRendering){
 
-		// // render directly to screenbuffer
-		// let pass = startPass(renderer, screenbuffer);
-		// let drawstate = {renderer, camera, renderables, pass};
+		// Render to an intermediate framebuffer (same as the EDL/dilate path)
+		// so the second color attachment (r32uint) is available for picking.
+		// A copyTextureToTexture at the end presents the result to the canvas.
+		let pass = startPass(renderer, fbo_0, "forward render");
+		let drawstate = {renderer, camera, renderables, pass};
 
-		// for(let [key, nodes] of renderables){
-		// 	for(let node of nodes){
-		// 		if(typeof node.render !== "undefined"){
-		// 			node.render(drawstate);
-		// 		}
-		// 	}
-		// }
+		renderPointsOctree(octrees, drawstate);
 
-		// renderer.renderDrawCommands(drawstate);
+		endPass(pass);
 
-		// endPass(pass);
+		fbo_source = fbo_0;
 	}else{
 
 		// render to intermediate framebuffer
@@ -612,6 +608,17 @@ function renderNotSoBasic(){
 		EDL(fbo_source, drawstate);
 
 		endPass(pass);
+	}else if(fbo_source !== screenbuffer){
+		// No post-process ran to blit the intermediate buffer to the canvas.
+		// Copy it directly so the rendered frame is visible.
+		let ce = renderer.device.createCommandEncoder();
+		let [w, h] = fbo_source.size;
+		ce.copyTextureToTexture(
+			{texture: fbo_source.colorAttachments[0].texture},
+			{texture: screenbuffer.colorAttachments[0].texture},
+			{width: w, height: h, depthOrArrayLayers: 1},
+		);
+		renderer.device.queue.submit([ce.finish()]);
 	}
 
 	{ // Render Gaussian Splats into their own render target, then compose with previously rendered stuff
