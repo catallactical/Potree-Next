@@ -229,15 +229,28 @@ export class PotreeLoader{
 				await this.loadHierarchy(node);
 			}
 
-			// TODO fix path. This isn't flexible. should be relative from PotreeLoader.js
+			// Resolve worker scripts relative to this module so the path is
+			// correct regardless of the page URL (document-relative paths break
+			// when the viewer is served from a route like /files/{id}/view).
 			let workerPath = null;
 			if(!this.metadata.encoding || this.metadata.encoding === "DEFAULT"){
-				workerPath = "./src/potree/octree/loader/DecoderWorker_default.js";
+				workerPath = new URL("./DecoderWorker_default.js", import.meta.url).href;
 			}else if(this.metadata.encoding === "BROTLI"){
-				workerPath = "./src/potree/octree/loader/DecoderWorker_brotli.js";
+				workerPath = new URL("./DecoderWorker_brotli.js", import.meta.url).href;
 			}
 			
 			let worker = WorkerPool.getWorker(workerPath, {type: "module"});
+
+			// Without this, a failed worker load (bad URL, script error) fires a
+			// silent error event and leaves the node stuck loading forever.
+			worker.onerror = (err) => {
+				console.error(`worker error for ${node.name}:`, err.message || err);
+				node.loaded = false;
+				node.loading = false;
+				node.loadAttempts = (node.loadAttempts ?? 0) + 1;
+				nodesLoading--;
+				WorkerPool.returnWorker(workerPath, worker);
+			};
 
 			worker.onmessage = (e) => {
 				let data = e.data;
@@ -298,16 +311,12 @@ export class PotreeLoader{
 			worker.postMessage(message, []);
 			
 		}catch(e){
-			debugger;
 			node.loaded = false;
 			node.loading = false;
 			nodesLoading--;
 
-			console.log(`failed to load ${node.name}`);
-			console.log(e);
-			console.log(`trying again!`);
-
-			// loading with range requests frequently fails in chrome 
+			console.error(`failed to load ${node.name}:`, e);
+			// loading with range requests frequently fails in chrome
 			// loading again usually resolves this.
 		}
 
