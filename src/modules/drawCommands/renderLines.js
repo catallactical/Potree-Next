@@ -1,5 +1,4 @@
-
-import {Geometry, Vector3, Matrix4} from "potree";
+import { Geometry, Vector3, Matrix4 } from "potree";
 
 const shaderCode = `
 struct Uniforms {
@@ -158,42 +157,40 @@ fn main_fragment(fragment : FragmentIn) -> FragmentOut {
 }
 `;
 
-
 let vbo_lines = null;
 let initialized = false;
 let pipeline = null;
 let uniformBuffer = null;
 let bindGroup = null;
-let capacity = 1_000_000;
+const capacity = 1_000_000;
 
-function createPipeline(renderer){
+function createPipeline(renderer) {
+	const { device } = renderer;
 
-	let {device} = renderer;
-
-	let module = device.createShaderModule({code: shaderCode});
+	const module = device.createShaderModule({ code: shaderCode });
 
 	pipeline = device.createRenderPipeline({
 		layout: "auto",
 		vertex: {
 			module,
 			entryPoint: "main_vertex",
-			buffers: []
+			buffers: [],
 		},
 		fragment: {
 			module,
 			entryPoint: "main_fragment",
 			targets: [
-				{format: navigator.gpu.getPreferredCanvasFormat()},
-				{format: "r32uint"},
+				{ format: navigator.gpu.getPreferredCanvasFormat() },
+				{ format: "r32uint" },
 			],
 		},
 		primitive: {
-			topology: 'triangle-list',
-			cullMode: 'none',
+			topology: "triangle-list",
+			cullMode: "none",
 		},
 		depthStencil: {
 			depthWriteEnabled: true,
-			depthCompare: 'greater',
+			depthCompare: "greater",
 			format: "depth32float",
 		},
 	});
@@ -201,22 +198,22 @@ function createPipeline(renderer){
 	return pipeline;
 }
 
-function createBuffer(renderer, data){
+function createBuffer(renderer, data) {
+	const { device } = renderer;
 
-	let {device} = renderer;
+	const vbos = [];
 
-	let vbos = [];
+	for (const entry of data.geometry.buffers) {
+		const { name, buffer } = entry;
 
-	for(let entry of data.geometry.buffers){
-		let {name, buffer} = entry;
-
-		let vbo = device.createBuffer({
+		const vbo = device.createBuffer({
 			size: buffer.byteLength,
-			usage: GPUBufferUsage.STORAGE | GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+			usage:
+				GPUBufferUsage.STORAGE | GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
 			mappedAtCreation: true,
 		});
 
-		let type = buffer.constructor;
+		const type = buffer.constructor;
 		new type(vbo.getMappedRange()).set(buffer);
 		vbo.unmap();
 
@@ -229,24 +226,27 @@ function createBuffer(renderer, data){
 	return vbos;
 }
 
-function init(renderer){
-
-	if(initialized){
+function init(renderer) {
+	if (initialized) {
 		return;
 	}
 
-	{ // create lines vbo
+	{
+		// create lines vbo
 
-		let geometry = {
-			buffers: [{
-				name: "position",
-				buffer: new Float32Array(2 * 3 * capacity),
-			},{
-				name: "color",
-				buffer: new Uint8Array(2 * 4 * capacity),
-			}]
+		const geometry = {
+			buffers: [
+				{
+					name: "position",
+					buffer: new Float32Array(2 * 3 * capacity),
+				},
+				{
+					name: "color",
+					buffer: new Uint8Array(2 * 4 * capacity),
+				},
+			],
 		};
-		let node = {geometry};
+		const node = { geometry };
 
 		vbo_lines = createBuffer(renderer, node);
 	}
@@ -254,7 +254,7 @@ function init(renderer){
 	{
 		pipeline = createPipeline(renderer);
 
-		let {device} = renderer;
+		const { device } = renderer;
 		const uniformBufferSize = 256;
 
 		uniformBuffer = device.createBuffer({
@@ -265,43 +265,43 @@ function init(renderer){
 		bindGroup = device.createBindGroup({
 			layout: pipeline.getBindGroupLayout(0),
 			entries: [
-				{binding: 0, resource: {buffer: uniformBuffer}},
-				{binding: 1, resource: {buffer: vbo_lines[0].vbo}},
-				{binding: 2, resource: {buffer: vbo_lines[1].vbo}},
+				{ binding: 0, resource: { buffer: uniformBuffer } },
+				{ binding: 1, resource: { buffer: vbo_lines[0].vbo } },
+				{ binding: 2, resource: { buffer: vbo_lines[1].vbo } },
 			],
 		});
 	}
 
 	initialized = true;
-
 }
 
-function updateUniforms(drawstate){
+function updateUniforms(drawstate) {
+	const { renderer, camera } = drawstate;
 
-	let {renderer, camera} = drawstate;
+	const data = new ArrayBuffer(256);
+	const f32 = new Float32Array(data);
+	const view = new DataView(data);
 
-	let data = new ArrayBuffer(256);
-	let f32 = new Float32Array(data);
-	let view = new DataView(data);
+	const camPos = camera.getWorldPosition();
 
-	let camPos = camera.getWorldPosition();
-
-	{ // transform
-		let world = new Matrix4();
-		let view = camera.view;
+	{
+		// transform
+		const world = new Matrix4();
+		const view = camera.view;
 
 		world.elements[12] = camPos.x;
 		world.elements[13] = camPos.y;
 		world.elements[14] = camPos.z;
 
-		let worldView = new Matrix4().multiplyMatrices(view, world);
+		const worldView = new Matrix4().multiplyMatrices(view, world);
 
 		f32.set(worldView.elements, 0);
 		f32.set(camera.proj.elements, 16);
 	}
 
-	{ // misc
-		let size = renderer.getSize();
+	{
+		// misc
+		const size = renderer.getSize();
 
 		view.setFloat32(128, size.width, true);
 		view.setFloat32(132, size.height, true);
@@ -310,28 +310,27 @@ function updateUniforms(drawstate){
 	renderer.device.queue.writeBuffer(uniformBuffer, 0, data, 0, data.byteLength);
 }
 
-export function render(lines, drawstate){
-
-	let {renderer} = drawstate;
-	let {device} = renderer;
+export function render(lines, drawstate) {
+	const { renderer, camera } = drawstate;
+	const { device } = renderer;
 
 	init(renderer);
 
 	updateUniforms(drawstate);
 
-	let {passEncoder} = drawstate.pass;
+	const { passEncoder } = drawstate.pass;
 
 	passEncoder.setPipeline(pipeline);
 	passEncoder.setBindGroup(0, bindGroup);
 
-	let camPos = camera.getWorldPosition();
+	const camPos = camera.getWorldPosition();
 
 	{
-		let position = new Float32Array(2 * 3 * lines.length);
-		let color = new Uint8Array(2 * 4 * lines.length);
+		const position = new Float32Array(2 * 3 * lines.length);
+		const color = new Uint8Array(2 * 4 * lines.length);
 
-		for(let i = 0; i < lines.length; i++){
-			let [start, end, c] = lines[i];
+		for (let i = 0; i < lines.length; i++) {
+			const [start, end, c] = lines[i];
 
 			position[6 * i + 0] = start.x - camPos.x;
 			position[6 * i + 1] = start.y - camPos.y;
@@ -353,16 +352,21 @@ export function render(lines, drawstate){
 		}
 
 		device.queue.writeBuffer(
-			vbo_lines[0].vbo, 0,
-			position.buffer, position.byteOffset, position.byteLength
+			vbo_lines[0].vbo,
+			0,
+			position.buffer,
+			position.byteOffset,
+			position.byteLength,
 		);
 
 		device.queue.writeBuffer(
-			vbo_lines[1].vbo, 0,
-			color.buffer, color.byteOffset, color.byteLength
+			vbo_lines[1].vbo,
+			0,
+			color.buffer,
+			color.byteOffset,
+			color.byteLength,
 		);
 	}
 
 	passEncoder.draw(6 * lines.length, 1, 0, 0);
-
-};
+}

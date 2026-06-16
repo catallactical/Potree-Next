@@ -227,7 +227,7 @@ function updateUniforms(drawstate){
 
 export function render(spheres, drawstate){
 
-	let {renderer} = drawstate;
+	let {renderer, camera} = drawstate;
 	let {device} = renderer;
 
 	init(renderer);

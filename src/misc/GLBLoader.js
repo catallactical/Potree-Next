@@ -1,60 +1,56 @@
-
-import {Geometry, SceneNode, Mesh} from "potree";
-import {Box3, Vector3} from "potree";
-import {PhongMaterial, ColorMode} from "potree";
-import {NormalMaterial, WireframeMaterial} from "potree";
+import { Geometry, SceneNode, Mesh } from "potree";
+import { Box3, Vector3 } from "potree";
+import { PhongMaterial, ColorMode } from "potree";
+import { NormalMaterial, WireframeMaterial } from "potree";
 
 let tmpCanvas = null;
 let tmpContext = null;
-function getTmpContext(){
-
-	if(tmpCanvas === null){
-		tmpCanvas = document.createElement('canvas');
+function getTmpContext() {
+	if (tmpCanvas === null) {
+		tmpCanvas = document.createElement("canvas");
 		tmpCanvas.width = 8192;
 		tmpCanvas.height = 8192;
-		tmpContext = tmpCanvas.getContext('2d');
+		tmpContext = tmpCanvas.getContext("2d");
 	}
 
 	return tmpContext;
 }
 
-export function load(url, callbacks){
+export function load(url, callbacks) {
+	const workerPath = new URL("./GLBLoaderWorker.js", import.meta.url).href;
+	const worker = new Worker(workerPath, { type: "module" });
 
-	let workerPath = "./src/misc/GLBLoaderWorker.js";
-	let worker = new Worker(workerPath, {type: "module"});
+	const root = new SceneNode("glb root");
 
-	let root = new SceneNode("glb root");
+	const images = new Map();
 
-	let images = new Map();
-
-	let image_loaded = (e) => {
+	const image_loaded = (e) => {
 		images.set(e.data.imageRef, e.data.imageBitmap);
 	};
 
-	let mesh_batch_loaded = (e) => {
-
+	const mesh_batch_loaded = (e) => {
 		let imageBitmap = null;
-		if(images.has(e.data.imageRef)){
+		if (images.has(e.data.imageRef)) {
 			imageBitmap = images.get(e.data.imageRef);
 		}
 
-		let geometryData = e.data.geometry;
+		const geometryData = e.data.geometry;
 
-		let geometry = new Geometry();
+		const geometry = new Geometry();
 		geometry.buffers = geometryData.buffers;
 		geometry.indices = geometryData.indices;
 		geometry.numElements = geometryData.numElements;
 		geometry.boundingBox.min.copy(geometryData.boundingBox.min);
 		geometry.boundingBox.max.copy(geometryData.boundingBox.max);
 
-		let mesh = new Mesh("glb mesh", geometry);
+		const mesh = new Mesh("glb mesh", geometry);
 
-		if(imageBitmap){
+		if (imageBitmap) {
 			mesh.material = new PhongMaterial();
 			mesh.material.image = imageBitmap;
 			mesh.material.colorMode = ColorMode.TEXTURE;
 			mesh.material.imageBuffer = e.data.imageBuffer;
-		}else{
+		} else {
 			mesh.material = new PhongMaterial();
 			mesh.material.image = null;
 			mesh.material.colorMode = ColorMode.VERTEX_COLOR;
@@ -62,31 +58,22 @@ export function load(url, callbacks){
 
 		root.children.push(mesh);
 
-		if(root.children.length === 1){
+		if (root.children.length === 1) {
 			callbacks.onStart(root);
 			callbacks.onNode(mesh);
-		}else{
+		} else {
 			callbacks.onNode(mesh);
 		}
 	};
 
-	
-
 	worker.onmessage = (e) => {
-
-		if(e.data.type === "mesh_batch_loaded"){
+		if (e.data.type === "mesh_batch_loaded") {
 			mesh_batch_loaded(e);
-		}else if(e.data.type === "image_loaded"){
+		} else if (e.data.type === "image_loaded") {
 			image_loaded(e);
 		}
-
 	};
 
-	let absoluteUrl = new URL(url, document.baseURI).href;
-	worker.postMessage({url: absoluteUrl});
-
-
-};
-
-
-
+	const absoluteUrl = new URL(url, document.baseURI).href;
+	worker.postMessage({ url: absoluteUrl });
+}

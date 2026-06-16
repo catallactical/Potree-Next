@@ -1,12 +1,11 @@
-
-import {PointCloudOctree, REFINEMENT, PointCloudOctreeNode} from "potree";
-import {PointCloudMaterial} from "potree";
-import {PointAttribute, PointAttributes, PointAttributeTypes} from "potree";
-import {WorkerPool} from "potree";
-import {Geometry} from "potree";
-import {Vector3, Box3, Matrix4} from "potree";
+import { PointCloudOctree, REFINEMENT, PointCloudOctreeNode } from "potree";
+import { PointCloudMaterial } from "potree";
+import { PointAttribute, PointAttributes, PointAttributeTypes } from "potree";
+import { WorkerPool } from "potree";
+import { Geometry } from "potree";
+import { Vector3, Box3, Matrix4 } from "potree";
 import JSON5 from "json5";
-import {MAPPINGS} from "potree";
+import { MAPPINGS } from "potree";
 
 let numActiveRequests = 0;
 
@@ -16,24 +15,24 @@ const NodeType = {
 	PROXY: 2,
 };
 
-let typenameTypeattributeMap = {
-	"double": PointAttributeTypes.DOUBLE,
-	"float": PointAttributeTypes.FLOAT,
-	"int8": PointAttributeTypes.INT8,
-	"uint8": PointAttributeTypes.UINT8,
-	"int16": PointAttributeTypes.INT16,
-	"uint16": PointAttributeTypes.UINT16,
-	"int32": PointAttributeTypes.INT32,
-	"uint32": PointAttributeTypes.UINT32,
-	"int64": PointAttributeTypes.INT64,
-	"uint64": PointAttributeTypes.UINT64,
+const typenameTypeattributeMap = {
+	double: PointAttributeTypes.DOUBLE,
+	float: PointAttributeTypes.FLOAT,
+	int8: PointAttributeTypes.INT8,
+	uint8: PointAttributeTypes.UINT8,
+	int16: PointAttributeTypes.INT16,
+	uint16: PointAttributeTypes.UINT16,
+	int32: PointAttributeTypes.INT32,
+	uint32: PointAttributeTypes.UINT32,
+	int64: PointAttributeTypes.INT64,
+	uint64: PointAttributeTypes.UINT64,
 };
 
-let tmpVec3 = new Vector3();
-function createChildAABB(aabb, index){
-	let min = aabb.min.clone();
-	let max = aabb.max.clone();
-	let size = tmpVec3.copy(max).sub(min);
+const tmpVec3 = new Vector3();
+function createChildAABB(aabb, index) {
+	const min = aabb.min.clone();
+	const max = aabb.max.clone();
+	const size = tmpVec3.copy(max).sub(min);
 
 	if ((index & 0b0001) > 0) {
 		min.z += size.z / 2;
@@ -46,7 +45,7 @@ function createChildAABB(aabb, index){
 	} else {
 		max.y -= size.y / 2;
 	}
-	
+
 	if ((index & 0b0100) > 0) {
 		min.x += size.x / 2;
 	} else {
@@ -56,30 +55,42 @@ function createChildAABB(aabb, index){
 	return new Box3(min, max);
 }
 
-function parseAttributes(jsonAttributes){
-
-
-	let replacements = {
-		"rgb": "rgba",
+function parseAttributes(jsonAttributes) {
+	const replacements = {
+		rgb: "rgba",
 	};
 
-	let attributeList = [];
+	const attributeList = [];
 
-	for(let jsonAttribute of jsonAttributes){
-		let {name, description, size, numElements, elementSize, min, max, scale, offset} = jsonAttribute;
+	for (const jsonAttribute of jsonAttributes) {
+		const {
+			name,
+			description,
+			size,
+			numElements,
+			elementSize,
+			min,
+			max,
+			scale,
+			offset,
+		} = jsonAttribute;
 
-		let type = typenameTypeattributeMap[jsonAttribute.type];
+		const type = typenameTypeattributeMap[jsonAttribute.type];
 
-		let potreeAttributeName = replacements[name] ? replacements[name] : name;
+		const potreeAttributeName = replacements[name] ? replacements[name] : name;
 
-		let attribute = new PointAttribute(potreeAttributeName, type, numElements);
+		const attribute = new PointAttribute(
+			potreeAttributeName,
+			type,
+			numElements,
+		);
 
-		if(numElements === 1){
+		if (numElements === 1) {
 			attribute.range = [min[0], max[0]];
-		}else{
+		} else {
 			attribute.range = [min, max];
 		}
-		
+
 		attribute.initialRange = attribute.range;
 		attribute.description = description;
 		attribute.scale = scale;
@@ -87,18 +98,17 @@ function parseAttributes(jsonAttributes){
 
 		attributeList.push(attribute);
 	}
-	
-	let attributes = new PointAttributes(attributeList);
+
+	const attributes = new PointAttributes(attributeList);
 
 	return attributes;
 }
 
-export class Potree3Loader{
-
+export class Potree3Loader {
 	static numBatchesLoading = 0;
 	static numLeavesLoading = 0;
 
-	constructor(){
+	constructor() {
 		this.metadata = null;
 		this.metanodeMap = new Map();
 		this.batchnodeMap = new Map();
@@ -107,38 +117,45 @@ export class Potree3Loader{
 		this.octree = null;
 	}
 
-	parseHierarchy(node, buffer){
-		
-		let view = new DataView(buffer);
+	parseHierarchy(node, buffer) {
+		const view = new DataView(buffer);
 
-		let bytesPerNode = 38;
-		let numNodes = buffer.byteLength / bytesPerNode;
+		const bytesPerNode = 38;
+		const numNodes = buffer.byteLength / bytesPerNode;
 
 		// console.log(numNodes);
 
-		let nodes = new Array(numNodes);
+		const nodes = new Array(numNodes);
 		nodes[0] = node;
 		let nodePos = 1;
 
-		for(let i = 0; i < numNodes; i++){
-			let current = nodes[i];
+		for (let i = 0; i < numNodes; i++) {
+			const current = nodes[i];
 
-			if(!current){
+			if (!current) {
 				console.log(nodes);
 				debugger;
 			}
 
-			let type                  = view.getUint8(i * bytesPerNode + 0);
-			let childMask             = view.getUint8(i * bytesPerNode + 1);
-			let numElements           = view.getUint32(i * bytesPerNode + 2, true);
-			let byteOffset            = Number(view.getBigInt64(i * bytesPerNode + 6, true));
-			let byteOffset_unfiltered = Number(view.getBigInt64(i * bytesPerNode + 14, true));
-			let byteSize              = Number(view.getUint32(i * bytesPerNode + 22, true));
-			let byteSize_position     = Number(view.getUint32(i * bytesPerNode + 26, true));
-			let byteSize_filtered     = Number(view.getUint32(i * bytesPerNode + 30, true));
-			let byteSize_unfiltered   = Number(view.getUint32(i * bytesPerNode + 34, true));
+			const type = view.getUint8(i * bytesPerNode + 0);
+			const childMask = view.getUint8(i * bytesPerNode + 1);
+			const numElements = view.getUint32(i * bytesPerNode + 2, true);
+			const byteOffset = Number(view.getBigInt64(i * bytesPerNode + 6, true));
+			const byteOffset_unfiltered = Number(
+				view.getBigInt64(i * bytesPerNode + 14, true),
+			);
+			const byteSize = Number(view.getUint32(i * bytesPerNode + 22, true));
+			const byteSize_position = Number(
+				view.getUint32(i * bytesPerNode + 26, true),
+			);
+			const byteSize_filtered = Number(
+				view.getUint32(i * bytesPerNode + 30, true),
+			);
+			const byteSize_unfiltered = Number(
+				view.getUint32(i * bytesPerNode + 34, true),
+			);
 
-			if(current.nodeType === NodeType.PROXY){
+			if (current.nodeType === NodeType.PROXY) {
 				// replace proxy with real node
 				current.byteOffset = byteOffset;
 				current.byteSize = byteSize;
@@ -147,15 +164,15 @@ export class Potree3Loader{
 				current.numElements = numElements;
 				current.byteOffset_unfiltered = byteOffset_unfiltered;
 				current.byteSize_unfiltered = byteSize_unfiltered;
-			}else if(type === NodeType.PROXY){
+			} else if (type === NodeType.PROXY) {
 				// load proxy
 				current.byteSize_position = byteSize_position;
 				current.byteSize_filtered = byteSize_filtered;
 				current.hierarchyByteOffset = byteOffset;
 				current.hierarchyByteSize = byteSize;
 				current.numElements = numElements;
-			}else{
-				// load real node 
+			} else {
+				// load real node
 				current.byteOffset = byteOffset;
 				current.byteSize = byteSize;
 				current.byteSize_position = byteSize_position;
@@ -164,27 +181,27 @@ export class Potree3Loader{
 				current.byteOffset_unfiltered = byteOffset_unfiltered;
 				current.byteSize_unfiltered = byteSize_unfiltered;
 			}
-			
+
 			current.nodeType = type;
 
-			if(current.nodeType === NodeType.LEAF){
+			if (current.nodeType === NodeType.LEAF) {
 				current.unfilteredLoaded = true;
 			}
 
-			if(current.nodeType === NodeType.PROXY){
+			if (current.nodeType === NodeType.PROXY) {
 				continue;
 			}
 
-			for(let childIndex = 0; childIndex < 8; childIndex++){
-				let childExists = ((1 << childIndex) & childMask) !== 0;
+			for (let childIndex = 0; childIndex < 8; childIndex++) {
+				const childExists = ((1 << childIndex) & childMask) !== 0;
 
-				if(!childExists){
+				if (!childExists) {
 					continue;
 				}
 
-				let childName = current.name + childIndex;
+				const childName = current.name + childIndex;
 
-				let child = new PointCloudOctreeNode(childName);
+				const child = new PointCloudOctreeNode(childName);
 				child.boundingBox = createChildAABB(current.boundingBox, childIndex);
 				child.name = childName;
 				child.spacing = current.spacing / 2;
@@ -199,22 +216,20 @@ export class Potree3Loader{
 				nodePos++;
 			}
 		}
-
 	}
 
-	async loadHierarchy(node){
+	async loadHierarchy(node) {
+		const { hierarchyByteOffset, hierarchyByteSize } = node;
 
-		let {hierarchyByteOffset, hierarchyByteSize} = node;
+		const first = this.metadata.hierarchyBuffer.offset + hierarchyByteOffset;
+		const last = first + hierarchyByteSize - 1;
 
-		let first = this.metadata.hierarchyBuffer.offset + hierarchyByteOffset;
-		let last = first + hierarchyByteSize - 1;
-		
-		let urlWithInfos = new URL(this.url, document.baseURI);
+		const urlWithInfos = new URL(this.url, document.baseURI);
 		urlWithInfos.searchParams.set("query", "loadHierarchy");
-		let response = await fetch(urlWithInfos, {
+		const response = await fetch(urlWithInfos, {
 			headers: {
-				'content-type': 'multipart/byteranges',
-				'Range': `bytes=${first}-${last}`,
+				"content-type": "multipart/byteranges",
+				Range: `bytes=${first}-${last}`,
 			},
 		});
 
@@ -222,27 +237,26 @@ export class Potree3Loader{
 		// 	console.log(`load large hierarchy. ${hierarchyByteSize} bytes}`);
 		// }
 
-		let buffer = await response.arrayBuffer();
+		const buffer = await response.arrayBuffer();
 
 		this.parseHierarchy(node, buffer);
 	}
 
 	// loads unfiltered voxel data for inner nodes
-	async loadNodeUnfiltered(node){
+	async loadNodeUnfiltered(node) {
+		if (numActiveRequests > 6) return;
+		if (!node.loaded) return; // regular filtered data needs to be loaded first
+		if (node.unfilteredLoaded) return;
+		if (node.unfilteredLoading) return;
+		if (node.loadAttempts > 5) return;
+		if (node.nodeType === NodeType.PROXY) return;
 
-		if(numActiveRequests > 6) return;
-		if(!node.loaded) return; // regular filtered data needs to be loaded first
-		if(node.unfilteredLoaded) return; 
-		if(node.unfilteredLoading) return;
-		if(node.loadAttempts > 5) return;
-		if(node.nodeType === NodeType.PROXY) return;
-
-		let nodes = [node];
+		const nodes = [node];
 
 		let chunkOffset = Infinity;
 		let chunkSize = 0;
 
-		for(let node of nodes){
+		for (const node of nodes) {
 			node.unfilteredLoading = true;
 			chunkOffset = Math.min(chunkOffset, node.byteOffset_unfiltered);
 			chunkSize += node.byteSize_unfiltered;
@@ -250,113 +264,115 @@ export class Potree3Loader{
 
 		chunkOffset = chunkOffset + this.metadata.pointBuffer.offset;
 
-		if(chunkSize === 0 || chunkSize > 20_000_000){
+		if (chunkSize === 0 || chunkSize > 20_000_000) {
 			debugger;
 		}
 
 		numActiveRequests++;
-		let promise = fetch(this.url, {
+		const promise = fetch(this.url, {
 			headers: {
-				'content-type': 'multipart/byteranges',
-				'Range': `bytes=${chunkOffset}-${chunkOffset + chunkSize - 1}`,
+				"content-type": "multipart/byteranges",
+				Range: `bytes=${chunkOffset}-${chunkOffset + chunkSize - 1}`,
 			},
 		});
 
 		let failed = false;
-		promise.catch(e => {
+		promise.catch((e) => {
 			console.log("failed...", e);
 			failed = true;
 		});
 
 		numActiveRequests--;
-		if(failed) return;
+		if (failed) return;
 
-		let response = await promise;
+		const response = await promise;
 
-		let buffer = await response.arrayBuffer();
+		const buffer = await response.arrayBuffer();
 
-		for(let node of nodes){
-			let source_u8 = new Uint8Array(buffer, node.byteOffset_unfiltered - chunkOffset, node.byteSize_unfiltered);
-			let target_u8 = new Uint8Array(node.geometry.buffer);
+		for (const node of nodes) {
+			const source_u8 = new Uint8Array(
+				buffer,
+				node.byteOffset_unfiltered - chunkOffset,
+				node.byteSize_unfiltered,
+			);
+			const target_u8 = new Uint8Array(node.geometry.buffer);
 
-			let n = node.numElements;
+			const n = node.numElements;
 
 			let sourceAttOffset = 0;
 			let targetAttOffset = 0;
-			for(let attribute of this.attributes.attributes){
+			for (const attribute of this.attributes.attributes) {
+				const isFiltered = ["position", "rgba"].includes(attribute.name);
 
-				let isFiltered = ["position", "rgba"].includes(attribute.name);
-
-				if(isFiltered){
+				if (isFiltered) {
 					targetAttOffset += attribute.byteSize;
-				}else{
-					for(let pointIndex = 0; pointIndex < n; pointIndex++)
-					for(let j = 0; j < attribute.byteSize; j++)
-					{
-						let value = source_u8[n * sourceAttOffset + pointIndex * attribute.byteSize + j];
-						target_u8[n * targetAttOffset + pointIndex * attribute.byteSize + j] = value;
-					}
+				} else {
+					for (let pointIndex = 0; pointIndex < n; pointIndex++)
+						for (let j = 0; j < attribute.byteSize; j++) {
+							const value =
+								source_u8[
+									n * sourceAttOffset + pointIndex * attribute.byteSize + j
+								];
+							target_u8[
+								n * targetAttOffset + pointIndex * attribute.byteSize + j
+							] = value;
+						}
 
 					targetAttOffset += attribute.byteSize;
 					sourceAttOffset += attribute.byteSize;
 				}
-
 			}
 
 			node.unfilteredLoading = false;
 			node.unfilteredLoaded = true;
 			node.dirty = true;
 		}
-
 	}
 
 	// loads filtered voxel data for inner nodes or full point data for leaf nodes
-	async loadNode(node){
+	async loadNode(node) {
+		const workerPath = new URL("./DecoderWorker.js", import.meta.url).href;
 
-		const workerPath = "./src/potree/octree/loader_v3/DecoderWorker.js";
-
-		if(WorkerPool.getWorkerCount(workerPath) > 6)
-		if(WorkerPool.getAvailableWorkerCount(workerPath) === 0)
-		{
-			return;
-		}
+		if (WorkerPool.getWorkerCount(workerPath) > 6)
+			if (WorkerPool.getAvailableWorkerCount(workerPath) === 0) {
+				return;
+			}
 
 		// when loading non-root node, check if we can load all siblings in one go
 
 		let nodes = [node];
-		let siblings = node?.parent?.children?.filter(n => n != null);
-		if(siblings){
+		const siblings = node?.parent?.children?.filter((n) => n != null);
+		if (siblings) {
 			nodes = siblings;
 		}
 
-		for(let node of nodes){
-			if(node.loading) return;
-			if(node.loadAttempts > 5) continue;
-			if(node.parent != null && !node.parent.loaded) return;
+		for (const node of nodes) {
+			if (node.loading) return;
+			if (node.loadAttempts > 5) continue;
+			if (node.parent != null && !node.parent.loaded) return;
 
 			node.loading = true;
 
-			try{
-				if(node.nodeType === NodeType.PROXY){
+			try {
+				if (node.nodeType === NodeType.PROXY) {
 					await this.loadHierarchy(node);
 				}
-			}catch(e){
+			} catch (e) {
 				console.log(e);
 			}
 		}
 
-		try{
-
+		try {
 			// TODO fix path. This isn't flexible. should be relative from PotreeLoader.js
-			let worker = WorkerPool.getWorker(workerPath, {type: "module"});
+			const worker = WorkerPool.getWorker(workerPath, { type: "module" });
 
 			worker.onmessage = (e) => {
-				let data = e.data;
+				const data = e.data;
 
-				if(data === "failed"){
+				if (data === "failed") {
 					console.log(`failed to load ${node.name}. trying again!`);
 
-					for(let node of nodes){
+					for (const node of nodes) {
 						node.loaded = false;
 						node.loading = false;
 					}
@@ -364,82 +380,86 @@ export class Potree3Loader{
 					WorkerPool.returnWorker(workerPath, worker);
 
 					return;
-				}else if(data?.type === "node parsed"){
+				} else if (data?.type === "node parsed") {
+					const loadedNode = nodes.find((node) => node.name === e.data.name);
 
-					let loadedNode = nodes.find(node => node.name === e.data.name);
-
-					let geometry = new Geometry();
+					const geometry = new Geometry();
 					geometry.numElements = loadedNode.numElements;
 					geometry.buffer = data.buffer;
 					geometry.statsList = data.statsList;
 
-					geometry.numVoxels = loadedNode.nodeType === NodeType.NORMAL ? loadedNode.numElements : 0;
-					geometry.numPoints = loadedNode.nodeType === NodeType.LEAF ? loadedNode.numElements : 0;
+					geometry.numVoxels =
+						loadedNode.nodeType === NodeType.NORMAL
+							? loadedNode.numElements
+							: 0;
+					geometry.numPoints =
+						loadedNode.nodeType === NodeType.LEAF ? loadedNode.numElements : 0;
 
 					loadedNode.geometry = geometry;
 					loadedNode.voxelCoords = data.voxelCoords;
 
-					if(loadedNode.name === "r"){
-						this.octree.events.dispatcher.dispatch("root_node_loaded", {octree: this.octree, loadedNode});
+					if (loadedNode.name === "r") {
+						this.octree.events.dispatcher.dispatch("root_node_loaded", {
+							octree: this.octree,
+							loadedNode,
+						});
 					}
-				}else if(e.data === "finished"){
+				} else if (e.data === "finished") {
 					WorkerPool.returnWorker(workerPath, worker);
 
 					// wait with "loaded = true" state until all nodes in a batch are loaded
-					for(let node of nodes){
+					for (const node of nodes) {
 						node.loading = false;
 						node.loaded = true;
 					}
 				}
-
 			};
 
-			let parentVoxelCoords = node.parent?.geometry.buffer;
+			const parentVoxelCoords = node.parent?.geometry.buffer;
 
-			let msg_nodes = [];
-			for(let node of nodes){
-
-				if(node.numElements === 0){
+			const msg_nodes = [];
+			for (const node of nodes) {
+				if (node.numElements === 0) {
 					debugger;
 				}
 
-				let msg_node = {
-					name:                  node.name,
-					numVoxels:             node.nodeType === NodeType.NORMAL ? node.numElements : 0,
-					numPoints:             node.nodeType === NodeType.LEAF ? node.numElements : 0,
-					min:                   node.boundingBox.min.toArray(),
-					max:                   node.boundingBox.max.toArray(),
-					byteOffset:            node.byteOffset,
-					byteSize:              node.byteSize,
-					byteSize_position:     node.byteSize_position,
-					byteSize_filtered:     node.byteSize_filtered,
+				const msg_node = {
+					name: node.name,
+					numVoxels: node.nodeType === NodeType.NORMAL ? node.numElements : 0,
+					numPoints: node.nodeType === NodeType.LEAF ? node.numElements : 0,
+					min: node.boundingBox.min.toArray(),
+					max: node.boundingBox.max.toArray(),
+					byteOffset: node.byteOffset,
+					byteSize: node.byteSize,
+					byteSize_position: node.byteSize_position,
+					byteSize_filtered: node.byteSize_filtered,
 					byteOffset_unfiltered: node.byteOffset_unfiltered,
-					byteSize_unfiltered:   node.byteSize_unfiltered,
+					byteSize_unfiltered: node.byteSize_unfiltered,
 				};
 
 				msg_nodes.push(msg_node);
 			}
 
-			let msg_octree = {
-				min:    this.octree.loader.metadata.boundingBox.min,
-				scale:  this.scale,
+			const msg_octree = {
+				min: this.octree.loader.metadata.boundingBox.min,
+				scale: this.scale,
 				offset: this.offset,
 				pointAttributes: this.attributes,
 			};
 
-			let url = new URL(`${this.url}`, document.baseURI).href;
-			let message = {
+			const url = new URL(`${this.url}`, document.baseURI).href;
+			const message = {
 				metadata: this.metadata,
 				octree: msg_octree,
-				nodes: msg_nodes, 
-				url, parentVoxelCoords
+				nodes: msg_nodes,
+				url,
+				parentVoxelCoords,
 			};
 
-			let transferables = parentVoxelCoords ? [parentVoxelCoords] : [];
+			const transferables = parentVoxelCoords ? [parentVoxelCoords] : [];
 
 			worker.postMessage(message, transferables.buffer);
-			
-		}catch(e){
+		} catch (e) {
 			debugger;
 			node.loaded = false;
 			node.loading = false;
@@ -448,43 +468,42 @@ export class Potree3Loader{
 			console.log(e);
 			console.log(`trying again!`);
 
-			// loading with range requests frequently fails in chrome 
+			// loading with range requests frequently fails in chrome
 			// loading again usually resolves this.
 		}
 	}
 
-	static async load(url){
-
-		let loader = new Potree3Loader();
+	static async load(url) {
+		const loader = new Potree3Loader();
 		loader.url = url;
 
-		let response_metadataSize = await fetch(url, {
+		const response_metadataSize = await fetch(url, {
 			headers: {
-				'content-type': 'multipart/byteranges',
-				'Range': `bytes=${0}-${3}`,
+				"content-type": "multipart/byteranges",
+				Range: `bytes=${0}-${3}`,
 			},
 		});
 
-		let metadataSizeBuffer = await response_metadataSize.arrayBuffer();
-		let metadataSize = new DataView(metadataSizeBuffer).getUint32(0, true);
+		const metadataSizeBuffer = await response_metadataSize.arrayBuffer();
+		const metadataSize = new DataView(metadataSizeBuffer).getUint32(0, true);
 
-		let response_metadata = await fetch(url, {
+		const response_metadata = await fetch(url, {
 			headers: {
-				'content-type': 'multipart/byteranges',
-				'Range': `bytes=${4}-${4 + metadataSize - 1}`,
+				"content-type": "multipart/byteranges",
+				Range: `bytes=${4}-${4 + metadataSize - 1}`,
 			},
 		});
 
-		let text = await response_metadata.text();
-		let metadata = JSON5.parse(text);
+		const text = await response_metadata.text();
+		const metadata = JSON5.parse(text);
 
-		let attributes = parseAttributes(metadata.attributes);
+		const attributes = parseAttributes(metadata.attributes);
 		loader.metadata = metadata;
 		loader.attributes = attributes;
 		loader.scale = metadata.scale;
 		loader.offset = metadata.offset;
 
-		let octree = new PointCloudOctree();
+		const octree = new PointCloudOctree();
 		octree.url = url;
 		octree.spacing = metadata.spacing;
 		octree.boundingBox = new Box3(
@@ -503,13 +522,13 @@ export class Potree3Loader{
 		octree.material.init(octree);
 
 		// add standard attribute mappings
-		for(let mapping of Object.values(MAPPINGS)){
-			if(["vec3", "scalar"].includes(mapping.name)){
+		for (const mapping of Object.values(MAPPINGS)) {
+			if (["vec3", "scalar"].includes(mapping.name)) {
 				octree.material.registerMapping(mapping);
 			}
 		}
 
-		let root = new PointCloudOctreeNode("r");
+		const root = new PointCloudOctreeNode("r");
 		root.boundingBox = octree.boundingBox.clone();
 		root.level = 0;
 		root.nodeType = NodeType.PROXY;
@@ -527,5 +546,4 @@ export class Potree3Loader{
 
 		return octree;
 	}
-
 }

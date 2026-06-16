@@ -121,7 +121,7 @@ export function render(meshes, drawstate){
 		return;
 	}
 
-	let {renderer} = drawstate;
+	let {renderer, camera} = drawstate;
 	let {device} = renderer;
 	let {passEncoder} = drawstate.pass;
 

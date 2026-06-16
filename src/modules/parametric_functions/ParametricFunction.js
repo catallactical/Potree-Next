@@ -1,5 +1,4 @@
-
-import {SceneNode, Matrix4} from "potree";
+import { SceneNode, Matrix4 } from "potree";
 
 const shaderSource = `
 struct Uniforms {
@@ -145,40 +144,39 @@ let pipeline = null;
 let uniformBuffer = null;
 let bindGroup = null;
 
-function initialize(renderer){
-
-	if(initialized){
+function initialize(renderer) {
+	if (initialized) {
 		return;
 	}
 
-	let {device} = renderer;
-	
-	let shaderModule = device.createShaderModule({code: shaderSource});
+	const { device } = renderer;
+
+	const shaderModule = device.createShaderModule({ code: shaderSource });
 
 	pipeline = device.createRenderPipeline({
 		layout: "auto",
 		vertex: {
 			module: shaderModule,
 			entryPoint: "main_vertex_triangles",
-			buffers: []
+			buffers: [],
 		},
 		fragment: {
 			module: shaderModule,
 			entryPoint: "main_fragment",
-			targets: [{format: navigator.gpu.getPreferredCanvasFormat()}],
+			targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }],
 		},
 		primitive: {
-			topology: 'triangle-list',
-			cullMode: 'none',
+			topology: "triangle-list",
+			cullMode: "none",
 		},
 		depthStencil: {
 			depthWriteEnabled: true,
-			depthCompare: 'greater',
+			depthCompare: "greater",
 			format: "depth32float",
 		},
 	});
 
-	let uniformBufferSize = 256;
+	const uniformBufferSize = 256;
 
 	uniformBuffer = device.createBuffer({
 		size: uniformBufferSize,
@@ -187,58 +185,60 @@ function initialize(renderer){
 
 	bindGroup = device.createBindGroup({
 		layout: pipeline.getBindGroupLayout(0),
-		entries: [
-			{binding: 0,resource: {buffer: uniformBuffer}},
-		],
+		entries: [{ binding: 0, resource: { buffer: uniformBuffer } }],
 	});
 
 	initialized = true;
 }
 
 export class ParametricFunction extends SceneNode {
-
-	constructor(name){
+	constructor(name) {
 		super(name);
 	}
 
-	render(drawstate){
+	render(drawstate) {
+		const { renderer, camera } = drawstate;
 
-		let {renderer} = drawstate;
-		
 		initialize(renderer);
 
-		let {passEncoder} = drawstate.pass;
+		const { passEncoder } = drawstate.pass;
 
-		{ // update uniforms
-			let data = new ArrayBuffer(256);
-			let f32 = new Float32Array(data);
-			let view = new DataView(data);
+		{
+			// update uniforms
+			const data = new ArrayBuffer(256);
+			const f32 = new Float32Array(data);
+			const view = new DataView(data);
 
-			{ // transform
-				let world = new Matrix4();
-				let view = camera.view;
-				let worldView = new Matrix4().multiplyMatrices(view, world);
+			{
+				// transform
+				const world = new Matrix4();
+				const view = camera.view;
+				const worldView = new Matrix4().multiplyMatrices(view, world);
 
 				f32.set(worldView.elements, 0);
 				f32.set(camera.proj.elements, 16);
 			}
 
-			{ // misc
-				let size = renderer.getSize();
+			{
+				// misc
+				const size = renderer.getSize();
 
 				view.setFloat32(128, size.width, true);
 				view.setFloat32(132, size.height, true);
 			}
 
-			renderer.device.queue.writeBuffer(uniformBuffer, 0, data, 0, data.byteLength);
+			renderer.device.queue.writeBuffer(
+				uniformBuffer,
+				0,
+				data,
+				0,
+				data.byteLength,
+			);
 		}
 
 		passEncoder.setPipeline(pipeline);
 		passEncoder.setBindGroup(0, bindGroup);
 
 		passEncoder.draw(6 * 1_000_000, 1, 0, 0);
-
-
 	}
-
 }

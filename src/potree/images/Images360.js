@@ -422,7 +422,7 @@ export class Images360 extends SceneNode{
 
 	render(drawstate){
 
-		let {renderer} = drawstate;
+		let {renderer, camera} = drawstate;
 
 		init(renderer);
 

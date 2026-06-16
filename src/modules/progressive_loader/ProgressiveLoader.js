@@ -1,55 +1,52 @@
+import { Vector3, Box3 } from "potree";
+import { Geometry, SceneNode, Points } from "potree";
+import { WorkerPool } from "potree";
 
-import {Vector3, Box3} from "potree";
-import {Geometry, SceneNode, Points} from "potree";
-import {WorkerPool} from "potree";
+const root = new SceneNode("progressive_root");
 
-let root = new SceneNode("progressive_root");
-
-let progress = {
+const progress = {
 	header: null,
 	nodes: [],
 };
 
-let workerPath = `../src/modules/progressive_loader/LasDecoder_worker.js`;
-let workers = [
-	WorkerPool.getWorker(workerPath, {type: "module"}),
-	WorkerPool.getWorker(workerPath, {type: "module"}),
-	WorkerPool.getWorker(workerPath, {type: "module"}),
-	WorkerPool.getWorker(workerPath, {type: "module"}),
+const workerPath = new URL("./LasDecoder_worker.js", import.meta.url).href;
+const workers = [
+	WorkerPool.getWorker(workerPath, { type: "module" }),
+	WorkerPool.getWorker(workerPath, { type: "module" }),
+	WorkerPool.getWorker(workerPath, { type: "module" }),
+	WorkerPool.getWorker(workerPath, { type: "module" }),
 	// WorkerPool.getWorker(workerPath, {type: "module"}),
 	// WorkerPool.getWorker(workerPath, {type: "module"}),
 ];
 
-
-async function loadHeader(file){
-
-	if(workers.length == 0){
+async function loadHeader(file) {
+	if (workers.length == 0) {
 		setTimeout(loadHeader, 1, file);
 
 		return;
 	}
 
-	let worker = workers.pop();
+	const worker = workers.pop();
 
 	worker.onmessage = (e) => {
-		let {buffers, numPoints, header, min, max} = e.data;
+		const { buffers, numPoints, header, min, max } = e.data;
 
-		let geometry = new Geometry();
+		const geometry = new Geometry();
 		geometry.numElements = numPoints;
 
 		geometry.buffers.push({
 			name: "position",
-			buffer: buffers.position
+			buffer: buffers.position,
 		});
 
 		geometry.buffers.push({
 			name: "rgba",
-			buffer: buffers.color
+			buffer: buffers.color,
 		});
 
-		let node = new Points();
+		const node = new Points();
 		node.geometry = geometry;
-		
+
 		root.children.push(node);
 
 		console.log("node loaded");
@@ -59,61 +56,57 @@ async function loadHeader(file){
 		console.log("time: ", performance.now());
 	};
 
-	worker.postMessage({file});
-
+	worker.postMessage({ file });
 }
 
-function load(file){
+function load(file) {
 	setTimeout(loadHeader, 1, file);
 }
 
-
-function install(element, args = {}){
-
-	element.addEventListener('dragover', function(e) {
+function install(element, args = {}) {
+	element.addEventListener("dragover", (e) => {
 		e.stopPropagation();
 		e.preventDefault();
-		e.dataTransfer.dropEffect = 'copy';
+		e.dataTransfer.dropEffect = "copy";
 	});
 
-	element.addEventListener('drop', async function(e) {
+	element.addEventListener("drop", async (e) => {
 		e.stopPropagation();
 		e.preventDefault();
 
-		let files = e.dataTransfer.files;
+		const files = e.dataTransfer.files;
 
 		console.log("start: ", performance.now());
 
-		let promises = [];
-		for (let file of files) {
-			let blob = file.slice(0, 227);
-			let promise = blob.arrayBuffer();
+		const promises = [];
+		for (const file of files) {
+			const blob = file.slice(0, 227);
+			const promise = blob.arrayBuffer();
 
 			promises.push(promise);
 
 			// load(file);
 		}
 
+		const buffers = await Promise.all(promises);
 
-		let buffers = await Promise.all(promises);
+		const full_aabb = new Box3();
 
-		let full_aabb = new Box3();
+		const boxes = [];
+		for (const buffer of buffers) {
+			const view = new DataView(buffer);
 
-		let boxes = [];
-		for(let buffer of buffers){
-			let view = new DataView(buffer);
-
-			let min = new Vector3();
+			const min = new Vector3();
 			min.x = view.getFloat64(187, true);
 			min.y = view.getFloat64(203, true);
 			min.z = view.getFloat64(219, true);
 
-			let max = new Vector3();
+			const max = new Vector3();
 			max.x = view.getFloat64(179, true);
 			max.y = view.getFloat64(195, true);
 			max.z = view.getFloat64(211, true);
 
-			let box = new Box3(min, max);
+			const box = new Box3(min, max);
 			boxes.push(box);
 
 			full_aabb.expandByPoint(min);
@@ -122,7 +115,7 @@ function install(element, args = {}){
 
 		progress.boundingBox = full_aabb;
 
-		for (let file of files) {
+		for (const file of files) {
 			load(file);
 		}
 
@@ -130,17 +123,14 @@ function install(element, args = {}){
 		// load(files.item(1));
 		// load(files.item(2));
 
-		if(args.onProgress){
-			args.onProgress({boxes, progress});
+		if (args.onProgress) {
+			args.onProgress({ boxes, progress });
 		}
 	});
 
-	if(args.onSetup){
+	if (args.onSetup) {
 		args.onSetup(root);
 	}
-
-
 }
 
-
-export {load, install};
+export { load, install };

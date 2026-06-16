@@ -303,7 +303,7 @@ export class SphereMap extends SceneNode{
 		// return;
 
 
-		let {renderer} = drawstate;
+		let {renderer, camera} = drawstate;
 
 		init(renderer);
 

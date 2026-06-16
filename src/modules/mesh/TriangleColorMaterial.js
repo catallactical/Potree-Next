@@ -113,7 +113,7 @@ let pipelineCache = new Map();
 
 function getPipeline(drawstate, node){
 
-	let {renderer} = drawstate;
+	let {renderer, camera} = drawstate;
 	let {device} = renderer;
 
 	let material = node.material;
@@ -214,7 +214,7 @@ function getUniformsBuffer(renderer, node){
 let bindGroupCache = new Map();
 function getBindGroup(drawstate, node){
 
-	let {renderer} = drawstate;
+	let {renderer, camera} = drawstate;
 	let bindGroup = bindGroupCache.get(node);
 
 	if(!bindGroup){

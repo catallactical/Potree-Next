@@ -169,7 +169,7 @@ function updateUniforms(drawstate){
 
 export function render(points, drawstate){
 
-	let {renderer} = drawstate;
+	let {renderer, camera} = drawstate;
 
 	init(renderer);
 

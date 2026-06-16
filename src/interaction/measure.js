@@ -1,12 +1,10 @@
-
-import {Potree, Mesh, Vector3, Vector4, geometries, SceneNode} from "potree";
-import {EventDispatcher, KeyCodes, MouseCodes} from "potree";
+import { Potree, Mesh, Vector3, Vector4, geometries, SceneNode } from "potree";
+import { EventDispatcher, KeyCodes, MouseCodes } from "potree";
 
 let counter = 0;
 
-export class Measure{
-
-	constructor(){
+export class Measure {
+	constructor() {
 		this.label = `Measure ${counter}`;
 		this.markers = [];
 		this.markers_highlighted = [];
@@ -18,15 +16,14 @@ export class Measure{
 		counter++;
 	}
 
-	addMarker(position){
+	addMarker(position) {
 		this.markers.push(position.clone());
 	}
 
-	toHtml(prefix = ""){
+	toHtml(prefix = "") {
 		let htmlMarkers = "";
-		for(let i = 0; i < this.markers.length; i++){
-
-			let marker = this.markers[i];
+		for (let i = 0; i < this.markers.length; i++) {
+			const marker = this.markers[i];
 
 			htmlMarkers += `
 			<tr id="${prefix}_${i}">
@@ -35,63 +32,54 @@ export class Measure{
 				<td style="text-align: right">${marker.z.toFixed(3)}</td>
 			</tr>
 			`;
-
 		}
 
-		let html = `
+		const html = `
 		<table style="width: 100%">
 			${htmlMarkers}
 		</table>
 		`;
-		
+
 		return html;
 	}
+}
 
-};
-
-export class PointMeasure extends Measure{
-
-	constructor(){
+export class PointMeasure extends Measure {
+	constructor() {
 		super();
 	}
 
-	addMarker(position){
+	addMarker(position) {
 		this.markers.push(position.clone());
 	}
-};
+}
 
-export class DistanceMeasure extends Measure{
-
-	constructor(){
+export class DistanceMeasure extends Measure {
+	constructor() {
 		super();
 		this.requiredMarkers = 0;
 		this.maxMarkers = 100;
 	}
 
-	addMarker(position){
+	addMarker(position) {
 		this.markers.push(position.clone());
 	}
+}
 
-};
-
-export class HeightMeasure extends Measure{
-
-	constructor(){
+export class HeightMeasure extends Measure {
+	constructor() {
 		super();
 		this.requiredMarkers = 2;
 		this.maxMarkers = 2;
 	}
 
-	addMarker(position){
+	addMarker(position) {
 		this.markers.push(position.clone());
-
 	}
+}
 
-};
-
-export class MeasureTool{
-
-	constructor(potree){
+export class MeasureTool {
+	constructor(potree) {
 		this.potree = potree;
 		this.renderer = potree.renderer;
 		this.element = potree.renderer.canvas;
@@ -113,45 +101,47 @@ export class MeasureTool{
 		potree.onUpdate(this.update.bind(this));
 
 		this.dispatcher = new EventDispatcher();
-
 	}
 
-	reset(){
+	reset() {}
 
-	}
+	update() {
+		const depth = this.potree.camera
+			.getWorldPosition()
+			.distanceTo(this.cursor.position);
+		const radius = depth / 50;
 
-	update(){
-		let depth = camera.getWorldPosition().distanceTo(this.cursor.position);
-		let radius = depth / 50;
-
-		if(this.currentMeasurement){
+		if (this.currentMeasurement) {
 			this.cursor.visible = true;
 			this.cursor.scale.set(radius, radius, radius);
-		}else{
+		} else {
 			this.cursor.visible = false;
 		}
 
-		for(let measure of this.measures){
-
+		for (const measure of this.measures) {
 			// DRAW MARKERS
-			for(let markerIndex = 0; markerIndex < measure.markers.length; markerIndex++){
-				let marker = measure.markers[markerIndex];
+			for (
+				let markerIndex = 0;
+				markerIndex < measure.markers.length;
+				markerIndex++
+			) {
+				const marker = measure.markers[markerIndex];
 
-				let depth = camera.getWorldPosition().distanceTo(marker);
-				let radius = depth / 50;
+				const depth = this.potree.camera.getWorldPosition().distanceTo(marker);
+				const radius = depth / 50;
 
-				let args = {
-					color: new Vector4(0, 1, 0, 1)
+				const args = {
+					color: new Vector4(0, 1, 0, 1),
 				};
-				if(measure.markers_highlighted[markerIndex]){
+				if (measure.markers_highlighted[markerIndex]) {
 					args.color.set(255, 127, 80, 255).multiplyScalar(1 / 255);
 				}
 				this.renderer.drawSphere(marker, radius, args);
 			}
 
 			// DRAW EDGES
-			if(measure.showEdges){
-				for(let i = 0; i < measure.markers.length - 1; i++){
+			if (measure.showEdges) {
+				for (let i = 0; i < measure.markers.length - 1; i++) {
 					this.renderer.drawLine(
 						measure.markers[i + 0],
 						measure.markers[i + 1],
@@ -161,33 +151,30 @@ export class MeasureTool{
 			}
 
 			// DRAW HEIGHT MEASURE
-			if(measure instanceof HeightMeasure && measure.markers.length === 2){
-
-				let low  = measure.markers[0];
+			if (measure instanceof HeightMeasure && measure.markers.length === 2) {
+				let low = measure.markers[0];
 				let high = measure.markers[1];
-				if(low.z > high.z){
+				if (low.z > high.z) {
 					[low, high] = [high, low];
 				}
 
-				let start = new Vector3(high.x, high.y, high.z);
-				let end = new Vector3(high.x, high.y, low.z);
+				const start = new Vector3(high.x, high.y, high.z);
+				const end = new Vector3(high.x, high.y, low.z);
 
 				this.renderer.drawLine(start, end, new Vector3(0, 0, 255));
 
 				this.renderer.drawLine(low, end, new Vector3(255, 0, 0));
 			}
-
 		}
 	}
 
-	measureMove(e){
-		let {x, y} = e.mouse;
+	measureMove(e) {
+		const { x, y } = e.mouse;
 
-		let node = this.cursor;
+		const node = this.cursor;
 
 		Potree.pick(x, y, (result) => {
-
-			if(result.depth !== Infinity){
+			if (result.depth !== Infinity) {
 				node.position.copy(result.position);
 				node.visible = true;
 
@@ -196,17 +183,16 @@ export class MeasureTool{
 		});
 	}
 
-	onClick(e){
+	onClick(e) {
 		console.log(e);
 	}
 
-	startMeasuring(measure){
-
-		if(this.currentMeasurement){
+	startMeasuring(measure) {
+		if (this.currentMeasurement) {
 			this.stopMeasuring();
 		}
 
-		if(!measure){
+		if (!measure) {
 			measure = new Measure();
 		}
 
@@ -214,38 +200,36 @@ export class MeasureTool{
 
 		this.measures.push(measure);
 
-		this.dispatcher.add("mousemove", (e) => {this.measureMove(e)});
+		this.dispatcher.add("mousemove", (e) => {
+			this.measureMove(e);
+		});
 		this.dispatcher.add("mouseup", (e) => {
-			
-			if(e.event.button === MouseCodes.LEFT && this.cursor.visible){
+			if (e.event.button === MouseCodes.LEFT && this.cursor.visible) {
+				const markerPos = this.cursor.position.clone();
 
-				let markerPos = this.cursor.position.clone();
-			
 				measure.addMarker(markerPos);
 
-				if(measure.markers.length === measure.maxMarkers){
+				if (measure.markers.length === measure.maxMarkers) {
 					this.stopMeasuring();
-				}else if(measure.markers.length === measure.requiredMarkers){
+				} else if (measure.markers.length === measure.requiredMarkers) {
 					this.stopMeasuring();
 				}
-
-			}else if(e.event.button === MouseCodes.RIGHT){
-
-				if(measure.requiredMarkers && measure.markers.length !== measure.requiredMarkers){
+			} else if (e.event.button === MouseCodes.RIGHT) {
+				if (
+					measure.requiredMarkers &&
+					measure.markers.length !== measure.requiredMarkers
+				) {
 					this.measures.pop();
 				}
 
 				this.stopMeasuring();
 			}
-
 		});
-
 	}
 
-	stopMeasuring(){
+	stopMeasuring() {
 		this.dispatcher.removeAll();
 		this.cursor.visible = false;
 		this.currentMeasurement = null;
 	}
-
-};
+}

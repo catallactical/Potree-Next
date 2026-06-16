@@ -1,6 +1,6 @@
 <html>
 <head>
-<link rel="stylesheet" href="resources/potree.css">
+<link rel="stylesheet" href="../resources/potree.css">
 </head>
 <body style="padding: 0; margin: 0">
 
@@ -17,17 +17,17 @@
 <script type="importmap">
 {
 	"imports": {
-		"potree":        "./src/Potree.js",
-		"lazperf":       "./libs/laz-perf/laz-perf.js",
-		"toolbar":       "./src/modules/toolbar/toolbar.js",
-		"sidebar":       "./src/modules/sidebar/sidebar.js",
-		"dat.gui":       "./libs/dat.gui/dat.gui.module.js",
-		"BinaryHeap":    "./libs/BinaryHeap/BinaryHeap.js",
-		"tween":         "./libs/tween/tween.esm.js",
-		"range-select":  "./libs/range-select/RangeSelect.js",
-		"json5":         "./libs/json5/json5.js",
-		"proj4":         "./libs/proj4js/proj4-src.js",
-		"radix-sort-esm":   "./libs/webgpu-radix-sort/dist/esm/radix-sort-esm.js"
+		"potree":        "./../src/Potree.js",
+		"lazperf":       "./../libs/laz-perf/laz-perf.js",
+		"toolbar":       "./../src/modules/toolbar/toolbar.js",
+		"sidebar":       "./../src/modules/sidebar/sidebar.js",
+		"dat.gui":       "./../libs/dat.gui/dat.gui.module.js",
+		"BinaryHeap":    "./../libs/BinaryHeap/BinaryHeap.js",
+		"tween":         "./../libs/tween/tween.esm.js",
+		"range-select":  "./../libs/range-select/RangeSelect.js",
+		"json5":         "./../libs/json5/json5.js",
+		"proj4":         "./../libs/proj4js/proj4-src.js",
+		"radix-sort-esm":   "./../libs/webgpu-radix-sort/dist/esm/radix-sort-esm.js"
 	}
 }
 </script>
@@ -42,7 +42,7 @@
 	import "range-select";
 	import {proj4} from "proj4";
 	import * as TWEEN from "tween";
-	import {load as loadGLB} from "./src/misc/GLBLoader.js";
+	import {load as loadGLB} from "./../src/misc/GLBLoader.js";
 	import {installSidebar} from "sidebar";
 
 	let canvas   = document.getElementById("canvas");
@@ -97,7 +97,7 @@
 
 	// * Awaiting the loaders is done to guarantee the order in which they appear in the GUI. It is not essential, though.
 
-	// await TDTilesLoader.load("./resources/le_locle_est/LeLocle_objmCesium3DTiles.json").then(tiles => {
+	// await TDTilesLoader.load("./../resources/le_locle_est/LeLocle_objmCesium3DTiles.json").then(tiles => {
 	await TDTilesLoader.load("https://sitn.ne.ch/3dtiles/le_locle_est/LeLocle_objmCesium3DTiles.json").then(tiles => {
 		tiles.name = "le_locle_est";
 		tiles.projector = proj4("EPSG:4978", target_crs);

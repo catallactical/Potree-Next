@@ -1,5 +1,4 @@
-
-import {Vector3, Matrix4, Geometry} from "potree";
+import { Vector3, Matrix4, Geometry } from "potree";
 
 const shaderSource = `
 struct Uniforms {
@@ -257,52 +256,53 @@ fn main_fragment(fragment : FragmentIn) -> FragmentOut {
 }
 `;
 
-
-let stateCache = new Map();
-function getState(renderer, node){
-
-	if(stateCache.has(node)){
+const stateCache = new Map();
+function getState(renderer, node) {
+	if (stateCache.has(node)) {
 		return stateCache.get(node);
-	}else{
-		let {device} = renderer;
+	} else {
+		const { device } = renderer;
 
-		let pipeline = device.createRenderPipeline({
+		const pipeline = device.createRenderPipeline({
 			layout: "auto",
 			vertex: {
-				module: device.createShaderModule({code: shaderSource}),
+				module: device.createShaderModule({ code: shaderSource }),
 				entryPoint: "main_vertex",
-				buffers: []
+				buffers: [],
 			},
 			fragment: {
-				module: device.createShaderModule({code: shaderSource}),
+				module: device.createShaderModule({ code: shaderSource }),
 				entryPoint: "main_fragment",
-				targets: [{format: navigator.gpu.getPreferredCanvasFormat()}],
+				targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }],
 			},
 			primitive: {
-				topology: 'triangle-list',
-				cullMode: 'back',
+				topology: "triangle-list",
+				cullMode: "back",
 			},
 			depthStencil: {
 				depthWriteEnabled: true,
-				depthCompare: 'greater',
+				depthCompare: "greater",
 				format: "depth32float",
 			},
 		});
 
-		let maxNodes = 10_000;
-		let nodeBufferHost = new ArrayBuffer(maxNodes * 16);
-		let nodeBuffer = device.createBuffer({
+		const maxNodes = 10_000;
+		const nodeBufferHost = new ArrayBuffer(maxNodes * 16);
+		const nodeBuffer = device.createBuffer({
 			size: nodeBufferHost.byteLength,
 			usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
 		});
 
-		let uniformBuffer = device.createBuffer({
+		const uniformBuffer = device.createBuffer({
 			size: 256,
 			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
 		});
 
-		let state = {
-			pipeline, nodeBufferHost, nodeBuffer, uniformBuffer,
+		const state = {
+			pipeline,
+			nodeBufferHost,
+			nodeBuffer,
+			uniformBuffer,
 		};
 
 		stateCache.set(node, state);
@@ -311,53 +311,51 @@ function getState(renderer, node){
 	}
 }
 
-let bindGroupCache = new Map();
-function getBindGroup(renderer, node, state){
+const bindGroupCache = new Map();
+function getBindGroup(renderer, node, state) {
+	if (!bindGroupCache.has(node)) {
+		const vboPositions = renderer.getGpuBuffer(node.voxels.positions);
+		const vboColors = renderer.getGpuBuffer(node.voxels.colors);
 
-	if(!bindGroupCache.has(node)){
-
-		let vboPositions = renderer.getGpuBuffer(node.voxels.positions);
-		let vboColors = renderer.getGpuBuffer(node.voxels.colors);
-
-		let bindGroup = renderer.device.createBindGroup({
+		const bindGroup = renderer.device.createBindGroup({
 			layout: state.pipeline.getBindGroupLayout(0),
 			entries: [
-				{binding: 0, resource: {buffer: state.uniformBuffer}},
-				{binding: 1, resource: {buffer: vboPositions}},
-				{binding: 2, resource: {buffer: vboColors}},
-				{binding: 3, resource: {buffer: state.nodeBuffer}},
+				{ binding: 0, resource: { buffer: state.uniformBuffer } },
+				{ binding: 1, resource: { buffer: vboPositions } },
+				{ binding: 2, resource: { buffer: vboColors } },
+				{ binding: 3, resource: { buffer: state.nodeBuffer } },
 			],
 		});
 
 		bindGroupCache.set(node, bindGroup);
-
 	}
 
 	return bindGroupCache.get(node);
 }
 
-function updateUniforms(renderer, node){
+function updateUniforms(renderer, camera, node) {
+	const state = getState(renderer, node);
 
-	let state = getState(renderer, node);
+	const data = new ArrayBuffer(256);
+	const f32 = new Float32Array(data);
+	const view = new DataView(data);
 
-	let data = new ArrayBuffer(256);
-	let f32 = new Float32Array(data);
-	let view = new DataView(data);
-
-	{ // transform
-		let world = new Matrix4();
-		let view = camera.view;
-		let worldView = new Matrix4().multiplyMatrices(view, world);
+	{
+		// transform
+		const world = new Matrix4();
+		const view = camera.view;
+		const worldView = new Matrix4().multiplyMatrices(view, world);
 
 		f32.set(worldView.elements, 0);
 		f32.set(camera.proj.elements, 16);
 	}
 
-	{ // misc
-		let size = renderer.getSize();
+	{
+		// misc
+		const size = renderer.getSize();
 
-		let box = node.boundingBox;
-		let voxelSize = (box.max.x - box.min.x) / node.voxelGridSize;
+		const box = node.boundingBox;
+		const voxelSize = (box.max.x - box.min.x) / node.voxelGridSize;
 
 		view.setFloat32(144, box.min.x, true);
 		view.setFloat32(148, box.min.y, true);
@@ -374,36 +372,37 @@ function updateUniforms(renderer, node){
 		view.setFloat32(176, node.level, true);
 	}
 
-	renderer.device.queue.writeBuffer(state.uniformBuffer, 0, data, 0, data.byteLength);
-	
+	renderer.device.queue.writeBuffer(
+		state.uniformBuffer,
+		0,
+		data,
+		0,
+		data.byteLength,
+	);
 }
 
-function childMaskOf(node){
-
+function childMaskOf(node) {
 	let mask = 0;
 
-	for(let i = 0; i < node.children.length; i++){
-		if(node.children[i]?.visible){
+	for (let i = 0; i < node.children.length; i++) {
+		if (node.children[i]?.visible) {
 			mask = mask | (1 << i);
 		}
-
 	}
 
 	return mask;
 }
 
-export function renderVoxelsLOD(root, drawstate){
+export function renderVoxelsLOD(root, drawstate) {
+	const { renderer, camera } = drawstate;
+	const { passEncoder } = drawstate.pass;
 
-	let {renderer, camera} = drawstate;
-	let {passEncoder} = drawstate.pass;
-
-	let state = getState(renderer, root);
+	const state = getState(renderer, root);
 
 	// let numVoxels = 0;
-	let nodes = [];
+	const nodes = [];
 	root.traverse((node) => {
-
-		if(node.visible){
+		if (node.visible) {
 			nodes.push(node);
 			// numVoxels += node.voxels.numVoxels;
 		}
@@ -412,37 +411,36 @@ export function renderVoxelsLOD(root, drawstate){
 	// sort breadth-first
 	//nodes.sort((a, b) => a.id.localeCompare(b.id));
 	nodes.sort((a, b) => {
-		if(a.name.length !== b.name.length){
+		if (a.name.length !== b.name.length) {
 			return a.name.length - b.name.length;
-		}else{
+		} else {
 			return a.name.localeCompare(b.name);
 		}
 	});
 
 	{
+		for (let i = 0; i < nodes.length; i++) {
+			const node = nodes[i];
 
-		for(let i = 0; i < nodes.length; i++){
-			let node = nodes[i];
-
-			if(node.parent !== null){
+			if (node.parent !== null) {
 				node.parent.childOffset = Infinity;
 			}
 		}
 
-		for(let i = 0; i < nodes.length; i++){
-			let node = nodes[i];
+		for (let i = 0; i < nodes.length; i++) {
+			const node = nodes[i];
 
-			if(node.parent !== null){
+			if (node.parent !== null) {
 				node.parent.childOffset = Math.min(node.parent.childOffset, i);
 			}
 		}
 
-		let view = new DataView(state.nodeBufferHost);
-		for(let i = 0; i < nodes.length; i++){
-			let node = nodes[i];
+		const view = new DataView(state.nodeBufferHost);
+		for (let i = 0; i < nodes.length; i++) {
+			const node = nodes[i];
 
-			let mask = childMaskOf(node);
-			let childOffset = node.childOffset ?? 0;
+			const mask = childMaskOf(node);
+			const childOffset = node.childOffset ?? 0;
 
 			view.setUint32(32 * i + 0, mask, true);
 			view.setUint32(32 * i + 4, childOffset, true);
@@ -453,27 +451,30 @@ export function renderVoxelsLOD(root, drawstate){
 			view.setUint32(32 * i + 24, node.isLeaf, true);
 		}
 
-		renderer.device.queue.writeBuffer(state.nodeBuffer, 0, state.nodeBufferHost, 0, 32 * nodes.length);
+		renderer.device.queue.writeBuffer(
+			state.nodeBuffer,
+			0,
+			state.nodeBufferHost,
+			0,
+			32 * nodes.length,
+		);
 	}
 
-	updateUniforms(renderer, root);
+	updateUniforms(renderer, camera, root);
 
 	passEncoder.setPipeline(state.pipeline);
 
 	let instanceIndex = 0;
-	for(let node of nodes){
-
-		if(!node.voxels){
+	for (const node of nodes) {
+		if (!node.voxels) {
 			continue;
 		}
 
-		let bindGroup = getBindGroup(renderer, node, state);
+		const bindGroup = getBindGroup(renderer, node, state);
 		passEncoder.setBindGroup(0, bindGroup);
 
 		passEncoder.draw(36 * node.voxels.numVoxels, 1, 0, instanceIndex);
 
 		instanceIndex++;
 	}
-
-
 }

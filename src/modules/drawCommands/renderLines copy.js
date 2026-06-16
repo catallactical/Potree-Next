@@ -219,7 +219,7 @@ function updateUniforms(drawstate){
 
 export function render(lines, drawstate){
 
-	let {renderer} = drawstate;
+	let {renderer, camera} = drawstate;
 	let {device} = renderer;
 
 	init(renderer);

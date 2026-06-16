@@ -191,7 +191,7 @@ let sampler = null;
 
 function getPipeline(drawstate, node){
 
-	let {renderer} = drawstate;
+	let {renderer, camera} = drawstate;
 	let {device} = renderer;
 
 	let material = node.material;
@@ -371,7 +371,7 @@ function updateLights(node, drawstate){
 let bindGroupCache = new Map();
 function getBindGroup(drawstate, node){
 
-	let {renderer} = drawstate;
+	let {renderer, camera} = drawstate;
 	let bindGroup = bindGroupCache.get(node);
 
 	if(!bindGroup){

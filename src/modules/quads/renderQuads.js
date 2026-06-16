@@ -262,7 +262,7 @@ export function renderQuads(node, drawstate){
 		return;
 	}
 
-	let {renderer} = drawstate;
+	let {renderer, camera} = drawstate;
 
 	init(renderer);
 
