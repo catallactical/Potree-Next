@@ -198,7 +198,7 @@ function createPipeline(renderer){
 			module: device.createShaderModule({code: shaderSource}),
 			entryPoint: "main_fragment",
 			targets: [
-				{format: "bgra8unorm"},
+				{format: navigator.gpu.getPreferredCanvasFormat()},
 				{format: "r32uint", writeMask: 0},
 			],
 		},

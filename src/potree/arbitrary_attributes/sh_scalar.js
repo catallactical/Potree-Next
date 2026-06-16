@@ -246,7 +246,7 @@ export function getPipeline(renderer, octree, attributeName){
 				cullMode: "none",
 			},
 			colorStates: [{
-				format: "bgra8unorm",
+				format: navigator.gpu.getPreferredCanvasFormat(),
 			}],
 		});
 

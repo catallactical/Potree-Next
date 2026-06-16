@@ -206,7 +206,7 @@ function init(renderer){
 		fragment: {
 			module: device.createShaderModule({code: fs, label: "fs_edl"}),
 			entryPoint: "main",
-			targets: [{format: "bgra8unorm"}],
+			targets: [{format: navigator.gpu.getPreferredCanvasFormat()}],
 		},
 		primitive: {
 			topology: 'triangle-list',

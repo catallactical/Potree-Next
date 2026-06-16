@@ -165,7 +165,7 @@ function initialize(renderer){
 		fragment: {
 			module: shaderModule,
 			entryPoint: "main_fragment",
-			targets: [{format: "bgra8unorm"}],
+			targets: [{format: navigator.gpu.getPreferredCanvasFormat()}],
 		},
 		primitive: {
 			topology: 'triangle-list',

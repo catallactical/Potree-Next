@@ -103,7 +103,7 @@ function init(renderer){
 			module: device.createShaderModule({code: fs}),
 			entryPoint: "main",
 			targets: [
-				{format: "bgra8unorm"},
+				{format: navigator.gpu.getPreferredCanvasFormat()},
 				{format: "r32uint", writeMask: 0},
 			],
 		},

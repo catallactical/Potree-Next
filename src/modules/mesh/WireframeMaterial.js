@@ -111,7 +111,7 @@ function getPipeline(drawstate, node){
 		fragment: {
 			module: device.createShaderModule({code: fs}),
 			entryPoint: "main",
-			targets: [{format: "bgra8unorm"}],
+			targets: [{format: navigator.gpu.getPreferredCanvasFormat()}],
 		},
 		primitive: {
 			topology: 'line-list',

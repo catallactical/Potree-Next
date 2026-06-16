@@ -72,7 +72,7 @@ function init(renderer){
 			module,
 			entryPoint: "main_fs",
 			targets: [
-				{format: "bgra8unorm", blend: blend},
+				{format: navigator.gpu.getPreferredCanvasFormat(), blend: blend},
 			],
 		},
 		primitive: {

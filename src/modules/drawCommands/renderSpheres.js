@@ -129,7 +129,7 @@ function createPipeline(renderer){
 			module: module,
 			entryPoint: "main_fragment",
 			targets: [
-				{format: "bgra8unorm"},
+				{format: navigator.gpu.getPreferredCanvasFormat()},
 				{format: "r32uint"},
 			],
 		},

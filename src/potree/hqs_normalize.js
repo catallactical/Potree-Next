@@ -281,7 +281,7 @@ function init(renderer){
 			module,
 			entryPoint: "main_fs",
 			targets: [
-				{format: "bgra8unorm"},
+				{format: navigator.gpu.getPreferredCanvasFormat()},
 				{format: "r32uint", blend: undefined}
 			],
 		},
@@ -306,7 +306,7 @@ function init(renderer){
 			module,
 			entryPoint: "main_fs_quads",
 			targets: [
-				{format: "bgra8unorm"},
+				{format: navigator.gpu.getPreferredCanvasFormat()},
 				{format: "r32uint", blend: undefined}
 			],
 		},
@@ -331,7 +331,7 @@ function init(renderer){
 			module,
 			entryPoint: "main_fs_voxels",
 			targets: [
-				{format: "bgra8unorm"},
+				{format: navigator.gpu.getPreferredCanvasFormat()},
 				{format: "r32uint", blend: undefined}
 			],
 		},

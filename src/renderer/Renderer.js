@@ -201,7 +201,7 @@ export class Renderer{
 
 		this.canvas.setAttribute("tabindex", 0);
 
-		this.swapChainFormat = "bgra8unorm";
+		this.swapChainFormat = navigator.gpu.getPreferredCanvasFormat();
 		this.context.configure({
 			device: this.device,
 			format: this.swapChainFormat,

@@ -31,7 +31,7 @@ export async function makePipeline(renderer, args = {}){
 	};
 
 	let isAdditive = flags.includes("additive_blending");
-	let format = "bgra8unorm";
+	let format = navigator.gpu.getPreferredCanvasFormat();
 
 	// isAdditive = true;
 	if(isAdditive){

@@ -164,7 +164,7 @@ export function render(meshes, drawstate){
 			module: device.createShaderModule({code: shaderSource}),
 			entryPoint: "main_fragment",
 			targets: [
-				{format: "bgra8unorm"},
+				{format: navigator.gpu.getPreferredCanvasFormat()},
 				{format: "r32uint"},
 			],
 		},

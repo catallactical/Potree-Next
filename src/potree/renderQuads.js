@@ -148,7 +148,7 @@ function createPipeline(renderer){
 			cullMode: "none",
 		},
 		colorStates: [{
-			format: "bgra8unorm",
+			format: navigator.gpu.getPreferredCanvasFormat(),
 		}],
 	});
 
