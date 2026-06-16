@@ -336,6 +336,7 @@ function updateNodesBuffer(
 	pass,
 ) {
 	const { nodesBuffer, nodesGpuBuffer } = octreeState;
+	const { renderer } = drawstate;
 	const view = new DataView(nodesBuffer);
 
 	let counter = 0;
